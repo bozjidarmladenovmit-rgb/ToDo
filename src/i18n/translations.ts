@@ -1,7 +1,7 @@
 import type { LanguageCode } from '../lib/types';
 
 const en = {
-  appName: 'ToDo-MyLife',
+  appName: 'DayPilot',
   today: 'Coming up',
   nothingToday: 'Nothing planned for the next days.',
   sections: 'Sections',
@@ -77,7 +77,7 @@ export type TranslationKey = keyof typeof en;
 type Dict = Record<TranslationKey, string>;
 
 const mk: Dict = {
-  appName: 'ToDo-MyLife',
+  appName: 'DayPilot',
   today: 'Следува',
   nothingToday: 'Ништо не е планирано за следните денови.',
   sections: 'Секции',
@@ -150,7 +150,7 @@ const mk: Dict = {
 };
 
 const fr: Dict = {
-  appName: 'ToDo-MyLife',
+  appName: 'DayPilot',
   today: 'À venir',
   nothingToday: 'Rien de prévu pour les prochains jours.',
   sections: 'Rubriques',
@@ -223,7 +223,7 @@ const fr: Dict = {
 };
 
 const es: Dict = {
-  appName: 'ToDo-MyLife',
+  appName: 'DayPilot',
   today: 'Próximamente',
   nothingToday: 'Nada planeado para los próximos días.',
   sections: 'Secciones',
@@ -296,7 +296,7 @@ const es: Dict = {
 };
 
 const de: Dict = {
-  appName: 'ToDo-MyLife',
+  appName: 'DayPilot',
   today: 'Demnächst',
   nothingToday: 'Für die nächsten Tage ist nichts geplant.',
   sections: 'Bereiche',
@@ -369,7 +369,7 @@ const de: Dict = {
 };
 
 const el: Dict = {
-  appName: 'ToDo-MyLife',
+  appName: 'DayPilot',
   today: 'Επόμενα',
   nothingToday: 'Δεν υπάρχει τίποτα προγραμματισμένο για τις επόμενες μέρες.',
   sections: 'Ενότητες',
@@ -442,7 +442,7 @@ const el: Dict = {
 };
 
 const it: Dict = {
-  appName: 'ToDo-MyLife',
+  appName: 'DayPilot',
   today: 'In arrivo',
   nothingToday: 'Niente in programma per i prossimi giorni.',
   sections: 'Sezioni',
