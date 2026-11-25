@@ -1,5 +1,10 @@
 import type { Reminder } from './types';
 
+/** Key of one occurrence of a reminder, used to mark it done. */
+export function occurrenceKey(reminderId: string, eventAt: Date): string {
+  return `${reminderId}|${eventAt.toISOString()}`;
+}
+
 const MINUTE = 60_000;
 const DAY = 24 * 60 * MINUTE;
 
@@ -84,6 +89,8 @@ export interface PlannedAlert {
   fireAt: Date;
   /** When the activity itself starts. */
   eventAt: Date;
+  /** Travel minutes used for this occurrence, including any extra (e.g. rain). */
+  travelMinutes: number;
 }
 
 /**
@@ -91,11 +98,13 @@ export interface PlannedAlert {
  * when to start getting ready and when to leave, then reminded at the start time.
  * Example: training 10:00, prep 10, travel 15 → 09:35 prepare, 09:45 leave, 10:00 start.
  */
-export function alertsForOccurrence(reminder: Reminder, eventAt: Date): PlannedAlert[] {
+export function alertsForOccurrence(reminder: Reminder, eventAt: Date, extraTravelMinutes = 0): PlannedAlert[] {
   const prep = Math.max(0, reminder.prepMinutes ?? 0);
-  const travel = Math.max(0, reminder.travelMinutes ?? 0);
+  const baseTravel = Math.max(0, reminder.travelMinutes ?? 0);
+  // Extra time (e.g. for rain) only matters when the user actually travels somewhere.
+  const travel = baseTravel > 0 ? baseTravel + Math.max(0, extraTravelMinutes) : 0;
   const alerts: PlannedAlert[] = [];
-  const base = { reminderId: reminder.id, eventAt };
+  const base = { reminderId: reminder.id, eventAt, travelMinutes: travel };
   if (prep > 0) {
     alerts.push({ ...base, kind: 'prepare', fireAt: new Date(eventAt.getTime() - (prep + travel) * MINUTE) });
   }
@@ -109,15 +118,23 @@ export function alertsForOccurrence(reminder: Reminder, eventAt: Date): PlannedA
 /** iOS keeps at most 64 pending local notifications per app; stay under it. */
 export const MAX_SCHEDULED = 60;
 
+export interface PlanOptions {
+  /** Occurrences the user already marked done (see occurrenceKey). */
+  doneKeys?: Set<string>;
+  /** Extra travel minutes for one occurrence, e.g. when rain is forecast. */
+  extraTravelMinutes?: (reminder: Reminder, eventAt: Date) => number;
+}
+
 /** Every alert due in the next `days` days, soonest first, capped at MAX_SCHEDULED. */
-export function planAlerts(reminders: Reminder[], now = new Date(), days = 14): PlannedAlert[] {
+export function planAlerts(reminders: Reminder[], now = new Date(), days = 14, options: PlanOptions = {}): PlannedAlert[] {
   // Look a little past the window so "prepare" alerts for early events are not lost.
   const to = new Date(now.getTime() + days * DAY);
   const all: PlannedAlert[] = [];
   for (const r of reminders) {
     if (!r.enabled) continue;
     for (const occ of occurrencesBetween(r, now, new Date(to.getTime() + DAY))) {
-      for (const a of alertsForOccurrence(r, occ)) {
+      if (options.doneKeys?.has(occurrenceKey(r.id, occ))) continue;
+      for (const a of alertsForOccurrence(r, occ, options.extraTravelMinutes?.(r, occ) ?? 0)) {
         if (a.fireAt > now && a.fireAt <= to) all.push(a);
       }
     }

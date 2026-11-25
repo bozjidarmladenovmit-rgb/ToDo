@@ -4,18 +4,22 @@ import { Pressable, Text, View } from 'react-native';
 import { useI18n } from '../i18n';
 import type { TranslationKey } from '../i18n/translations';
 import { getCategory } from '../lib/categories';
+import { isRainy } from '../lib/engine';
 import { formatDateTime } from '../lib/format';
+import { useStore } from '../lib/store';
 import type { Reminder } from '../lib/types';
 import { colors, styles } from './ui';
 
 export function ReminderRow({ reminder, at }: { reminder: Reminder; at?: Date }) {
   const { t } = useI18n();
+  const { weather } = useStore();
   const cat = getCategory(reminder.category);
   const leaveMinutes = (reminder.prepMinutes ?? 0) + (reminder.travelMinutes ?? 0);
   const details = [
     reminder.person && t('forPerson', { person: reminder.person }),
     reminder.location && `📍 ${reminder.location}`,
     leaveMinutes > 0 && `⏱ ${leaveMinutes} ${t('min')}`,
+    at && leaveMinutes > 0 && isRainy(weather, reminder, at) && '☔',
   ].filter(Boolean);
 
   return (

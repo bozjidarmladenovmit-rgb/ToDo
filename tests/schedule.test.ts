@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { alertsForOccurrence, occurrencesBetween, planAlerts, MAX_SCHEDULED } from '../src/lib/schedule.ts';
+import { alertsForOccurrence, occurrenceKey, occurrencesBetween, planAlerts, MAX_SCHEDULED } from '../src/lib/schedule.ts';
 import type { Reminder } from '../src/lib/types.ts';
 
 const base = (over: Partial<Reminder>): Reminder => ({
@@ -77,4 +77,21 @@ test('past alerts are not planned', () => {
   const r = base({ prepMinutes: 10, travelMinutes: 15 });
   const plan = planAlerts([r], day(1, 9, 40));
   assert.deepEqual(plan.map((a) => a.kind), ['leave', 'start']);
+});
+
+test('done occurrences are skipped, others kept', () => {
+  const r = base({ repeat: { kind: 'daily' } });
+  const now = day(1, 8);
+  const doneKeys = new Set([occurrenceKey(r.id, day(1, 10))]);
+  const plan = planAlerts([r], now, 3, { doneKeys });
+  assert.equal(plan[0].eventAt.getDate(), 2);
+});
+
+test('rain adds travel time to prepare/leave but not without travel', () => {
+  const r = base({ prepMinutes: 10, travelMinutes: 15 });
+  const alerts = alertsForOccurrence(r, day(1, 10), 5);
+  assert.deepEqual(alerts.map((a) => hm(a.fireAt)), ['1 9:30', '1 9:40', '1 10:00']);
+  assert.equal(alerts[0].travelMinutes, 20);
+  const noTravel = alertsForOccurrence(base({ prepMinutes: 10 }), day(1, 10), 5);
+  assert.deepEqual(noTravel.map((a) => hm(a.fireAt)), ['1 9:50', '1 10:00']);
 });

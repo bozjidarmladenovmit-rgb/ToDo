@@ -32,6 +32,13 @@
         {
           "color": "#4F46E5"
         }
+      ],
+      "expo-background-task",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "DayPilot uses your location to calculate how long it takes to get to your activities, so it can tell you when to leave."
+        }
       ]
     ],
     "scheme": "daypilot"

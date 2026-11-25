@@ -1,9 +1,12 @@
 import { Stack } from 'expo-router';
+import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { colors } from '../components/ui';
 import { I18nProvider, useI18n } from '../i18n';
+// Importing this module defines the background task; it must happen at startup.
+import { registerBackgroundRefresh } from '../lib/background';
 import { StoreProvider } from '../lib/store';
 
 function AppStack() {
@@ -26,6 +29,9 @@ function AppStack() {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    registerBackgroundRefresh();
+  }, []);
   return (
     <SafeAreaProvider>
       <I18nProvider>

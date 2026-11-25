@@ -2,12 +2,14 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Platform, ScrollView, Switch, Text, View } from 'react-native';
 
+import { PlacePicker } from '../../components/PlacePicker';
+import { TravelModePicker } from '../../components/TravelModePicker';
 import { Button, Chip, DateTimeField, Input, Label, styles } from '../../components/ui';
 import { useI18n } from '../../i18n';
 import type { TranslationKey } from '../../i18n/translations';
 import { CATEGORIES, getCategory } from '../../lib/categories';
 import { newId, useStore } from '../../lib/store';
-import type { CategoryId, Reminder, Repeat } from '../../lib/types';
+import type { CategoryId, Place, Reminder, Repeat, TravelMode } from '../../lib/types';
 
 type RepeatKind = Repeat['kind'];
 const REPEAT_KINDS: { kind: RepeatKind; key: TranslationKey }[] = [
@@ -34,7 +36,7 @@ const toInt = (s: string) => {
 export default function EditReminder() {
   const params = useLocalSearchParams<{ id?: string; category?: string }>();
   const { t } = useI18n();
-  const { reminders, saveReminder, deleteReminder } = useStore();
+  const { reminders, settings, saveReminder, deleteReminder } = useStore();
   const existing = reminders.find((r) => r.id === params.id);
 
   const [title, setTitle] = useState(existing?.title ?? '');
@@ -52,6 +54,9 @@ export default function EditReminder() {
   const [location, setLocation] = useState(existing?.location ?? '');
   const [prep, setPrep] = useState(existing?.prepMinutes ? String(existing.prepMinutes) : '');
   const [travel, setTravel] = useState(existing?.travelMinutes ? String(existing.travelMinutes) : '');
+  const [place, setPlace] = useState<Place | undefined>(existing?.place);
+  const [travelMode, setTravelMode] = useState<TravelMode>(existing?.travelMode ?? settings.defaultTravelMode);
+  const [travelAuto, setTravelAuto] = useState(existing?.travelAuto ?? true);
   const [notes, setNotes] = useState(existing?.notes ?? '');
   const [enabled, setEnabled] = useState(existing?.enabled ?? true);
 
@@ -84,6 +89,13 @@ export default function EditReminder() {
       Alert.alert(t('titleRequired'));
       return;
     }
+    const auto = cat.usesLocation && !!place && travelAuto;
+    // Keep the last calculated time only if the trip itself did not change.
+    const sameTrip =
+      !!existing?.travelAuto &&
+      existing.place?.lat === place?.lat &&
+      existing.place?.lng === place?.lng &&
+      (existing.travelMode ?? settings.defaultTravelMode) === travelMode;
     const r: Reminder = {
       id: existing?.id ?? newId(),
       createdAt: existing?.createdAt ?? new Date().toISOString(),
@@ -94,8 +106,19 @@ export default function EditReminder() {
       endAt: repeatKind !== 'none' && endAt ? endAt.toISOString() : undefined,
       person: person.trim() || undefined,
       location: cat.usesLocation ? location.trim() || undefined : undefined,
+      place: cat.usesLocation ? place : undefined,
+      travelMode: cat.usesLocation && place ? travelMode : undefined,
+      travelAuto: auto || undefined,
       prepMinutes: toInt(prep) || undefined,
-      travelMinutes: cat.usesLocation ? toInt(travel) || undefined : undefined,
+      travelMinutes: !cat.usesLocation
+        ? undefined
+        : auto
+          ? sameTrip
+            ? existing?.travelMinutes
+            : undefined
+          : toInt(travel) || undefined,
+      travelSource: auto && sameTrip ? existing?.travelSource : undefined,
+      travelComputedAt: auto && sameTrip ? existing?.travelComputedAt : undefined,
       notes: notes.trim() || undefined,
       enabled,
     };
@@ -203,7 +226,33 @@ export default function EditReminder() {
       {cat.usesLocation && (
         <>
           <Label>{t('location')}</Label>
-          <Input value={location} onChangeText={setLocation} placeholder={t('locationPlaceholder')} />
+          <PlacePicker
+            text={location}
+            onTextChange={setLocation}
+            place={place}
+            onPlaceChange={setPlace}
+            placeholder={t('locationPlaceholder')}
+          />
+        </>
+      )}
+
+      {cat.usesLocation && place && (
+        <>
+          <Label>{t('travelMode')}</Label>
+          <TravelModePicker value={travelMode} onChange={setTravelMode} />
+          <View style={[styles.row, { justifyContent: 'space-between', marginTop: 8 }]}>
+            <Text style={{ fontSize: 16, flex: 1 }}>{t('travelAuto')}</Text>
+            <Switch value={travelAuto} onValueChange={setTravelAuto} />
+          </View>
+          {travelAuto && !settings.home && <Text style={styles.muted}>{t('needHome')}</Text>}
+          {travelAuto && existing?.travelAuto && existing.travelMinutes !== undefined && existing.place === place && (
+            <Text style={styles.muted}>
+              {t('travelCalculated', {
+                minutes: existing.travelMinutes,
+                source: t(existing.travelSource === 'google' ? 'sourceGoogle' : 'sourceEstimate'),
+              })}
+            </Text>
+          )}
         </>
       )}
 
@@ -212,14 +261,13 @@ export default function EditReminder() {
           <Label>{t('prepMinutes')}</Label>
           <Input value={prep} onChangeText={setPrep} keyboardType="number-pad" placeholder="0" />
         </View>
-        {cat.usesLocation && (
+        {cat.usesLocation && !(place && travelAuto) && (
           <View style={{ flex: 1 }}>
             <Label>{t('travelMinutes')}</Label>
             <Input value={travel} onChangeText={setTravel} keyboardType="number-pad" placeholder="0" />
           </View>
         )}
       </View>
-      {cat.usesLocation && <Text style={styles.muted}>{t('travelHint')}</Text>}
 
       <Label>{t('notes')}</Label>
       <Input value={notes} onChangeText={setNotes} multiline style={{ minHeight: 70, textAlignVertical: 'top' }} />
